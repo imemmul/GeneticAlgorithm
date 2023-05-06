@@ -1,90 +1,84 @@
 import numpy as np
 import random
 class GeneticAlgorithm():
-    def __init__(self, requirements, proficiency_levels, num_gen=100, population_size=50, mutation_rate=0.1) -> None:
-        self.num_gen = num_gen
-        self.pop_size = population_size
+    def __init__(self, requirements, proficiency_levels, num_gen=50, population_size=50, mutation_rate=0.1) -> None:
+        self.num_gen = num_gen # setting num_gen default 50
+        self.pop_size = population_size # default 50
         self.requirements = requirements
         self.proficiency = proficiency_levels
-        self.num_tasks = self.requirements.shape[1]
+        self.num_tasks = self.requirements.shape[0] 
         self.num_students = self.proficiency.shape[1]
-        self.mutation_rate = mutation_rate
+        self.mutation_rate = mutation_rate #default 20
     
     def run(self):
-        # requirements.shape[0] = number of tasks
-        # requirements.shape[1] = number of skillsets
-        # proficiency.shape[0] = number of students
-        # proficiency.shape[1] = number of skillsets
-        # print(self.requirements)
-        population = self.initialize_population()
-        for i in range(self.num_gen):
-            new_population = []
-            for j in range(self.pop_size):
-                parents = self.select_parents(population)
-                child = self.crossover(parents)
-                child = self.mutate(child)
-                new_population.append(child)
-            population = new_population
-        best_solution = max(population, key=self.fitness_function)
-        best_fitness = self.fitness_function(best_solution)
-        return best_solution, best_fitness
+        population = self.initialize_population() # init pop
 
-    def fitness_function(self, solution):
-        total_fitness = 0
-        for p in range(self.num_tasks):
-            project_fitness = 0
-            assigned_students = []
-            for s in range(self.num_students):
-                if solution[s][p] == 1:
-                    assigned_students.append(s)
-                    project_fitness += sum(self.requirements[p] * self.proficiency[s])
-            if len(assigned_students) == 0:
-                return 0
-            total_fitness += project_fitness / len(assigned_students)
-        return total_fitness
+        for generation in range(self.num_gen): # iterate through num_gen
+            fitness_values = [self.fitness_function(chromosome) for chromosome in population] # calculate fitness values for every chromosomes
+            best_fitness = max(fitness_values) # get the best fitness and best chromosome 
+            best_chromosome = population[fitness_values.index(best_fitness)]
+            print(f"Generation {generation + 1}: Best Fitness = {best_fitness}")
+
+            new_population = [best_chromosome]  # here comes the elitism I should keep best fitness valued chromosome unchanged
+            # apply selection crossover and mutation these function mostly inspired from Kie Codes Genetic Algorithms Coding video.
+            while len(new_population) < self.pop_size:
+                parent1, parent2 = self.selection(population, fitness_values)
+                child1, child2 = self.crossover(parent1, parent2)
+                child1 = self.mutation(child1, self.mutation_rate)
+                child2 = self.mutation(child2, self.mutation_rate)
+                new_population.extend([child1, child2])
+
+            population = new_population
+        return best_chromosome
+
+    def fitness_function(self, chromosome):
+        total_proficiency = 0
+        for project, assigned in enumerate(chromosome):
+            if assigned:
+                total_proficiency += np.sum(self.requirements[project] * self.proficiency) # adding proficiencies to total_prof
+        # TODO It is mandatory to assign at least one student to a project, while a maximum of three students can be assigned to any given project. In addition to this, one student can be assigned to at most two projects.
+        # TODO Does below code applies constraints ?
+        skills = np.dot(chromosome, self.requirements) # to use in constraint of 
+        # print(f"chromosome {skills}")
+        tasks = np.sum(chromosome)
+
+        if np.any(skills > 3) or tasks > 2: # does this if apply given constraints ?
+            # print("constrained asserted")
+            return 0
+        else:
+            # print("proficiency passed")
+            return total_proficiency
     
     def initialize_population(self):
         population = []
-        for i in range(self.pop_size):
-            solution = np.zeros((self.num_students, self.num_tasks))
-            for p in range(self.num_tasks):
-                num_assigned = random.randint(1, 3)
-                assigned_students = random.sample(range(self.num_students), num_assigned)
-                for s in assigned_students:
-                    solution[s][p] = 1
-            population.append(solution)
-        # print(population)
-        return np.array(population)
-    def select_parents(self, population):
-        fitness_values = [self.fitness_function(solution) for solution in population]
-        sum_fitness = sum(fitness_values)
-        probabilities = [fitness / sum_fitness for fitness in fitness_values]
-        flat_population = population.reshape((population.shape[0], -1))
+        for _ in range(self.pop_size):
+            chromosome = np.zeros(self.num_tasks, dtype=int) # initiliazing chromosomes (solutions) with zeros
+            num_assigned_projects = random.randint(1, self.num_tasks) # randomized num of assigned projects
+            assigned_projects = random.sample(range(self.num_tasks), num_assigned_projects) # take random sample from num_assigned_projects
+            for project in assigned_projects:
+                chromosome[project] = 1 # assign projects
+            population.append(chromosome) # creating array of chromosomes population
+        return population 
+        
+    
+    def selection(self, population, fitness_values):
+        # selects two individuals from the population based on their fitness values
+        #  implements a form of selection mechanism that favors individuals with higher fitness values, allowing them to have a higher chance of being chosen for reproduction.
+        
+        # weights = fitnss_values does it
+        selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
+        return [population[i] for i in selected_indices]
 
-        # Select indices from the flattened population using the probabilities
-        indices = np.random.choice(range(len(flat_population)), size=2, replace=False, p=probabilities)
 
-        # Convert the indices back to 3D indices
-        indices_3d = np.unravel_index(indices, population.shape[:2])
-
-        # Select the individuals from the population using the 3D indices
-        parents = population[indices_3d]
-        return parents
-    def crossover(self, parents):
-        print(f"parents {parents}")
-        parent1, parent2 = parents
-        print(parent1)
-        child = np.zeros((self.num_students, self.num_tasks))
-        for p in range(self.num_tasks):
-            for s in range(self.num_students):
-                if parent1[s][p] == 1 or parent2[s][p] == 1:
-                    child[s][p] = 1
-        return child
-    def mutate(self, solution):
-        for p in range(self.num_tasks):
-            for s in range(self.num_students):
-                if solution[s][p] == 1 and random.random() < self.mutation_rate:
-                    solution[s][p] = 0
-                elif solution[s][p] == 0 and random.random() < self.mutation_rate:
-                    solution[s][p] = 1
-        return solution
+    def crossover(self, parent1, parent2):
+        crossover_point = random.randint(1, len(parent1) - 1) # selecting random point that where to makes crossover from
+        child1 = np.concatenate((parent1[:crossover_point], parent2[crossover_point:]))
+        child2 = np.concatenate((parent2[:crossover_point], parent1[crossover_point:]))
+        return child1, child2
+    
+    def mutation(self, chromosome, mutation_rate):
+        # basic mutation implementation
+        for i in range(len(chromosome)):
+            if random.random() < mutation_rate:
+                chromosome[i] = 1 - chromosome[i]  # Flip the bit
+        return chromosome
