@@ -58,6 +58,7 @@ class GeneticAlgorithm():
             return total_proficiency
     
     def initialize_population(self):
+        # this function applies randomize intialization algorithms to init population
         population = []
         for _ in range(self.pop_size):
             chromosome = np.zeros(self.num_tasks, dtype=int) # initiliazing chromosomes (solutions) with zeros
@@ -78,14 +79,14 @@ class GeneticAlgorithm():
         return [population[i] for i in selected_indices]
 
     def crossover(self, parent1, parent2):
-        crossover_point = random.randint(1, len(parent1) - 1) # selecting random point that where to makes crossover from
-        child1 = np.concatenate((parent1[:crossover_point], parent2[crossover_point:]))
-        child2 = np.concatenate((parent2[:crossover_point], parent1[crossover_point:]))
+        temp_point = random.randint(1, len(parent1) - 1) # selecting random point that where to makes crossover from
+        child1 = np.concatenate((parent1[:temp_point], parent2[temp_point:]))
+        child2 = np.concatenate((parent2[:temp_point], parent1[temp_point:]))
         return child1, child2
     
     def mutation(self, chromosome, mutation_rate):
         # basic mutation implementation
         for i in range(len(chromosome)):
             if random.random() < mutation_rate:
-                chromosome[i] = 1 - chromosome[i]  # Flip the bit
+                chromosome[i] = 1 - chromosome[i]  # 0 to 1 or 1 to 0
         return chromosome
