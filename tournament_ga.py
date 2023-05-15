@@ -1,6 +1,6 @@
 import numpy as np
 import random
-class GeneticAlgorithm():
+class GeneticAlgorithmTournament():
     def __init__(self, requirements, proficiency_levels, num_gen=50, population_size=50, mutation_rate=0.1) -> None:
         self.num_gen = num_gen # setting num_gen default 50
         self.pop_size = population_size # default 50
@@ -9,15 +9,23 @@ class GeneticAlgorithm():
         self.num_tasks = self.requirements.shape[0] 
         self.num_students = self.proficiency.shape[1]
         self.mutation_rate = mutation_rate #default 20
-    
+        self.is_valid = True
     def run(self):
         population = self.initialize_population() # init pop
 
         for generation in range(self.num_gen): # iterate through num_gen
-            fitness_values = [self.fitness_function(chromosome) for chromosome in population] # calculate fitness values for every chromosomes
+            fitness_values = [self.calculate_fitness(chromosome) for chromosome in population] # calculate fitness values for every chromosomes
+            
+            while self.is_valid:
+                if all(value == 0 for value in fitness_values):
+                    population = self.initialize_population()
+                    fitness_values = [self.calculate_fitness(chromosome) for chromosome in population]
+                else:
+                    self.is_valid = False 
+                    break # calculate fitness values for every chromosomes
             best_fitness = max(fitness_values) # get the best fitness and best chromosome 
             best_chromosome = population[fitness_values.index(best_fitness)]
-            print(f"Generation {generation + 1}: Best Fitness = {best_fitness}")
+            print(f"Generation {generation + 1}: Fitness = {best_fitness}")
 
             new_population = [best_chromosome]  # here comes the elitism I should keep best fitness valued chromosome unchanged
             # apply selection crossover and mutation these function mostly inspired from Kie Codes Genetic Algorithms Coding video.
@@ -31,7 +39,7 @@ class GeneticAlgorithm():
             population = new_population
         return best_chromosome
 
-    def fitness_function(self, chromosome):
+    def calculate_fitness(self, chromosome):
         total_proficiency = 0
         for project, assigned in enumerate(chromosome):
             if assigned:
@@ -66,7 +74,16 @@ class GeneticAlgorithm():
         #  implements a form of selection mechanism that favors individuals with higher fitness values, allowing them to have a higher chance of being chosen for reproduction.
         
         # weights = fitnss_values does it
-        selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
+        # Tournament Selection
+        tournament_size = 3  # Number of individuals in each tournament
+
+        selected_indices = []
+        for _ in range(2):  # Select two individuals
+            tournament_indices = random.choices(range(len(population)), k=tournament_size)
+            tournament_fitness = [fitness_values[i] for i in tournament_indices]
+            selected_index = tournament_indices[np.argmax(tournament_fitness)]
+            selected_indices.append(selected_index)
+
         return [population[i] for i in selected_indices]
 
 
