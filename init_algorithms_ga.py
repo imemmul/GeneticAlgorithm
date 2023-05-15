@@ -1,6 +1,6 @@
 import numpy as np
 import random
-class GeneticAlgorithm():
+class GeneticAlgorithmHeuristic():
     def __init__(self, requirements, proficiency_levels, num_gen=50, population_size=50, mutation_rate=0.1) -> None:
         self.num_gen = num_gen # setting num_gen default 50
         self.pop_size = population_size # default 50
@@ -16,13 +16,13 @@ class GeneticAlgorithm():
         for generation in range(self.num_gen): # iterate through num_gen
             fitness_values = [self.calculate_fitness(chromosome) for chromosome in population] # calculate fitness values for every chromosomes
             
-            while self.is_valid:
-                if all(value == 0 for value in fitness_values):
-                    population = self.initialize_population()
-                    fitness_values = [self.calculate_fitness(chromosome) for chromosome in population]
-                else:
-                    self.is_valid = False 
-                    break # calculate fitness values for every chromosomes
+            # while self.is_valid:
+            #     if all(value == 0 for value in fitness_values):
+            #         population = self.initialize_population()
+            #         fitness_values = [self.calculate_fitness(chromosome) for chromosome in population]
+            #     else:
+            #         self.is_valid = False 
+            #         break # calculate fitness values for every chromosomes
             best_fitness = max(fitness_values) # get the best fitness and best chromosome 
             best_chromosome = population[fitness_values.index(best_fitness)]
             print(f"Generation {generation + 1}: Fitness = {best_fitness}")
@@ -59,14 +59,36 @@ class GeneticAlgorithm():
     
     def initialize_population(self):
         population = []
+        
+        # Perform heuristic initialization for each chromosome
         for _ in range(self.pop_size):
-            chromosome = np.zeros(self.num_tasks, dtype=int) # initiliazing chromosomes (solutions) with zeros
-            num_assigned_projects = random.randint(1, self.num_tasks) # randomized num of assigned projects
-            assigned_projects = random.sample(range(self.num_tasks), num_assigned_projects) # take random sample from num_assigned_projects
-            for project in assigned_projects:
-                chromosome[project] = 1 # assign projects
-            population.append(chromosome) # creating array of chromosomes population
-        return population 
+            chromosome = self.heuristic_initialization() # Use a heuristic initialization method
+            population.append(chromosome) # Add chromosome to the population
+            
+        return population
+
+    def heuristic_initialization(self):
+        # Implement your heuristic initialization method here
+        # Generate a chromosome using heuristics that consider the requirements and proficiency levels
+        
+        # Example heuristic:
+        chromosome = np.zeros(self.num_tasks, dtype=int) # Initialize chromosome with zeros
+        remaining_tasks = set(range(self.num_tasks)) # Set of tasks that haven't been assigned
+        
+        # Assign tasks based on some heuristic rules
+        while len(remaining_tasks) > 0:
+            task = self.select_task(remaining_tasks) # Use a heuristic rule to select the next task
+            chromosome[task] = 1 # Assign the task to the chromosome
+            remaining_tasks.remove(task) # Remove the assigned task from the set
+        
+        return chromosome
+
+    def select_task(self, remaining_tasks):
+        # Implement your heuristic rule to select the next task from the remaining tasks
+        # This rule can be based on requirements, proficiency levels, or any other criteria
+        
+        # Example rule: Select a task randomly from the remaining tasks
+        return random.choice(list(remaining_tasks))
         
     
     def selection(self, population, fitness_values):
@@ -74,7 +96,12 @@ class GeneticAlgorithm():
         #  implements a form of selection mechanism that favors individuals with higher fitness values, allowing them to have a higher chance of being chosen for reproduction.
         
         # weights = fitnss_values does it
-        selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
+        if all(value == 0 for value in fitness_values):
+            selected_indices = random.sample(range(len(population)), k=2)
+        else:
+            selected_indices = random.choices(range(len(population)), weights=fitness_values, k=2)
+            
+            
         return [population[i] for i in selected_indices]
 
     def crossover(self, parent1, parent2):
